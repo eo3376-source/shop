@@ -52,7 +52,7 @@ export async function renderHeader() {
       <div class="shell header-inner">
         <a class="header-home" href="/">상품 목록</a>
         <nav class="header-nav" aria-label="사용자 메뉴">
-          ${user ? `<a href="/mypage.html">${escapeHtml(user.name)}님</a><button type="button" data-logout>로그아웃</button>` : '<a href="/login.html">로그인</a><a href="/signup.html">회원가입</a>'}
+          ${user ? `<span class="header-user">${escapeHtml(user.name)}님</span><a href="/mypage.html">마이페이지</a><button type="button" data-logout>로그아웃</button>` : '<a href="/login.html">로그인</a><a href="/signup.html">회원가입</a>'}
           <a href="/cart.html">장바구니</a>
         </nav>
       </div>

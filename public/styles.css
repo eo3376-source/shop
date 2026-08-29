@@ -75,7 +75,8 @@ img {
 
 .header-home,
 .header-nav a,
-.header-nav button {
+.header-nav button,
+.header-user {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
