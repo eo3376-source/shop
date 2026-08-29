@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>상품 목록</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div data-header></div>
+  <main class="page">
+    <section class="shell catalog-shell" aria-labelledby="catalog-title">
+      <h1 class="catalog-title" id="catalog-title">상품</h1>
+      <div class="category-filter" role="tablist" aria-label="상품 분류" data-categories></div>
+      <div class="product-grid" data-products aria-live="polite"></div>
+      <p class="message" data-message hidden></p>
+    </section>
+  </main>
+  <script type="module" src="/home.js"></script>
+</body>
+</html>

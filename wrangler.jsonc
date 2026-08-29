@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "korean-shop-demo",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-29",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "korean-shop-demo-db",
+      "database_id": "68b8bf28-4709-4b34-bb9d-f876bf3c3025"
+    }
+  ]
+}

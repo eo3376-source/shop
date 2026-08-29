@@ -1,0 +1,11 @@
+{
+  "name": "korean-shop-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "db:local": "wrangler d1 migrations apply korean-shop-demo-db --local",
+    "test:smoke": "node tests/smoke.mjs"
+  }
+}
