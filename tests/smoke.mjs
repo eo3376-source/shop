@@ -31,6 +31,11 @@ const food = await request(`/api/products?category=${encodeURIComponent("식품"
 assert.equal(food.response.status, 200);
 assert.equal(food.data.products.length, 2);
 
+const guestCart = await request("/api/cart");
+assert.equal(guestCart.response.status, 401);
+const guestOrder = await request("/api/orders");
+assert.equal(guestOrder.response.status, 401);
+
 const firstCookie = await signupAndLogin("첫사용자");
 const secondCookie = await signupAndLogin("둘째사용자");
 
@@ -65,5 +70,10 @@ assert.equal(result.response.status, 404);
 result = await request(`/api/orders/${orderId}`, {}, firstCookie);
 assert.equal(result.response.status, 200);
 assert.equal(result.data.order.items[0].price, 89000);
+
+result = await request("/api/auth/logout", { method: "POST", body: "{}" }, firstCookie);
+assert.equal(result.response.status, 200);
+result = await request("/api/cart", {}, firstCookie);
+assert.equal(result.response.status, 401);
 
 console.log(`Smoke tests passed against ${baseUrl}`);
