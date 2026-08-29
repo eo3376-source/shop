@@ -1,7 +1,7 @@
 const encoder = new TextEncoder();
 const SESSION_COOKIE = "shop_session";
 const SESSION_DAYS = 7;
-const PBKDF2_ITERATIONS = 600000;
+const PBKDF2_ITERATIONS = 100000;
 const CATEGORIES = new Set(["잡화", "뷰티", "신발", "식품"]);
 
 export default {
