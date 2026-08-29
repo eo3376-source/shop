@@ -72,8 +72,9 @@ const marker = Date.now();
 const authResult = await evaluate(`(async () => {
   const email = "visual-${marker}@example.com";
   const headers = { "Content-Type": "application/json" };
-  const signup = await fetch("/api/auth/signup", { method: "POST", headers, body: JSON.stringify({ email, password: "testing1234", name: "화면확인" }) });
-  const login = await fetch("/api/auth/login", { method: "POST", headers, body: JSON.stringify({ email, password: "testing1234" }) });
+  const password = "Visual-" + crypto.randomUUID() + "-9a";
+  const signup = await fetch("/api/auth/signup", { method: "POST", headers, body: JSON.stringify({ email, password, name: "화면확인" }) });
+  const login = await fetch("/api/auth/login", { method: "POST", headers, body: JSON.stringify({ email, password }) });
   const cart = await fetch("/api/cart", { method: "POST", headers, body: JSON.stringify({ productId: 1, qty: 1 }) });
   return { signup: signup.status, login: login.status, cart: cart.status };
 })()`);

@@ -2,6 +2,8 @@ const encoder = new TextEncoder();
 const SESSION_COOKIE = "shop_session";
 const SESSION_DAYS = 7;
 const PBKDF2_ITERATIONS = 100000;
+const MAX_JSON_BYTES = 16384;
+const ORDER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CATEGORIES = new Set(["잡화", "뷰티", "신발", "식품"]);
 
 export default {
@@ -38,12 +40,15 @@ async function handleApi(request, env, url) {
   }
 
   if (method === "GET" && path === "/api/products") return listProducts(env.DB, url);
-  if (method === "GET" && /^\/api\/products\/\d+$/.test(path)) {
-    return getProduct(env.DB, Number(path.split("/").pop()));
+  const productMatch = path.match(/^\/api\/products\/(\d+)$/);
+  if (method === "GET" && productMatch) {
+    const productId = parseRouteId(productMatch[1]);
+    return productId ? getProduct(env.DB, productId) : json({ error: "올바르지 않은 상품 번호입니다." }, 400);
   }
   const englishMatch = path.match(/^\/api\/products\/(\d+)\/english$/);
   if (method === "POST" && englishMatch) {
-    return generateEnglishDescription(env.DB, env.GEMINI_API_KEY, Number(englishMatch[1]));
+    const productId = parseRouteId(englishMatch[1]);
+    return productId ? generateEnglishDescription(env.DB, env.GEMINI_API_KEY, productId) : json({ error: "올바르지 않은 상품 번호입니다." }, 400);
   }
   if (method === "POST" && path === "/api/auth/signup") return signup(request, env.DB);
   if (method === "POST" && path === "/api/auth/login") return login(request, env.DB, url);
@@ -55,17 +60,22 @@ async function handleApi(request, env, url) {
 
   if (method === "GET" && path === "/api/cart") return getCart(env.DB, user.id);
   if (method === "POST" && path === "/api/cart") return addCartItem(request, env.DB, user.id);
-  if (method === "PATCH" && /^\/api\/cart\/\d+$/.test(path)) {
-    return updateCartItem(request, env.DB, user.id, Number(path.split("/").pop()));
+  const cartItemMatch = path.match(/^\/api\/cart\/(\d+)$/);
+  if (method === "PATCH" && cartItemMatch) {
+    const productId = parseRouteId(cartItemMatch[1]);
+    return productId ? updateCartItem(request, env.DB, user.id, productId) : json({ error: "올바르지 않은 상품 번호입니다." }, 400);
   }
-  if (method === "DELETE" && /^\/api\/cart\/\d+$/.test(path)) {
-    return deleteCartItem(env.DB, user.id, Number(path.split("/").pop()));
+  if (method === "DELETE" && cartItemMatch) {
+    const productId = parseRouteId(cartItemMatch[1]);
+    return productId ? deleteCartItem(env.DB, user.id, productId) : json({ error: "올바르지 않은 상품 번호입니다." }, 400);
   }
   if (method === "POST" && path === "/api/orders") return createOrder(env.DB, user.id);
   if (method === "POST" && path === "/api/payments/confirm") return confirmPayment(request, env.DB, user.id, env.TOSS_SECRET_KEY);
   if (method === "GET" && path === "/api/orders") return listOrders(env.DB, user.id);
   if (method === "GET" && path.startsWith("/api/orders/")) {
-    return getOrder(env.DB, user.id, decodeURIComponent(path.slice("/api/orders/".length)));
+    const orderId = decodeOrderId(path.slice("/api/orders/".length));
+    if (!orderId) return json({ error: "올바르지 않은 주문 번호입니다." }, 400);
+    return getOrder(env.DB, user.id, orderId);
   }
 
   return json({ error: "요청한 API를 찾을 수 없습니다." }, 404);
@@ -113,7 +123,7 @@ async function generateEnglishDescription(db, apiKey, id) {
     const description = sentences.join(" ");
     return json({ description });
   } catch (cause) {
-    console.error("Workers AI generation failed", cause);
+    console.error("Gemini generation failed", cause);
     return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
   }
 }
@@ -127,7 +137,7 @@ async function signup(request, db) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!email || !isEmail(email)) return json({ error: "올바른 이메일을 입력해주세요." }, 400);
   if (password.length < 8 || password.length > 128) return json({ error: "비밀번호는 8자 이상 128자 이하로 입력해주세요." }, 400);
-  if (!name || name.length > 50) return json({ error: "이름은 1자 이상 50자 이하로 입력해주세요." }, 400);
+  if (!isValidName(name)) return json({ error: "이름은 제어 문자를 제외한 1자 이상 50자 이하로 입력해주세요." }, 400);
 
   const exists = await db.prepare("SELECT 1 FROM users WHERE email = ?").bind(email).first();
   if (exists) return json({ error: "이미 가입된 이메일입니다." }, 409);
@@ -148,6 +158,9 @@ async function login(request, db, url) {
 
   const email = normalizeEmail(body.email);
   const password = typeof body.password === "string" ? body.password : "";
+  if (!isEmail(email) || password.length < 8 || password.length > 128) {
+    return json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, 401);
+  }
   const user = await db.prepare("SELECT id, email, name, password_hash FROM users WHERE email = ?").bind(email).first();
   if (!user || !(await verifyPassword(password, user.password_hash))) {
     return json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, 401);
@@ -261,7 +274,7 @@ async function listOrders(db, userId) {
 }
 
 async function getOrder(db, userId, orderId) {
-  if (!orderId || orderId.length > 64) return json({ error: "올바르지 않은 주문 번호입니다." }, 400);
+  if (!ORDER_ID_PATTERN.test(orderId)) return json({ error: "올바르지 않은 주문 번호입니다." }, 400);
   const order = await db.prepare("SELECT id, total, status, created_at FROM orders WHERE id = ? AND user_id = ?").bind(orderId, userId).first();
   if (!order) return json({ error: "주문을 찾을 수 없습니다." }, 404);
   const { results: items } = await db.prepare(`
@@ -275,18 +288,18 @@ async function getOrder(db, userId, orderId) {
 }
 
 async function confirmPayment(request, db, userId, secretKey) {
-  if (!secretKey) return json({ error: "결제 테스트 키가 설정되지 않았습니다." }, 503);
   const body = await readJson(request);
   const paymentKey = typeof body?.paymentKey === "string" ? body.paymentKey.trim() : "";
   const orderId = typeof body?.orderId === "string" ? body.orderId.trim() : "";
-  const amount = Number(body?.amount);
-  if (!paymentKey || paymentKey.length > 200 || !orderId || orderId.length > 64 || !Number.isSafeInteger(amount) || amount <= 0) {
+  const amount = parsePositiveInteger(body?.amount);
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(paymentKey) || !ORDER_ID_PATTERN.test(orderId) || !amount) {
     return json({ error: "결제 승인 정보가 올바르지 않습니다." }, 400);
   }
 
   const order = await db.prepare("SELECT id, total, status FROM orders WHERE id = ? AND user_id = ?")
     .bind(orderId, userId).first();
   if (!order) return json({ error: "주문을 찾을 수 없습니다." }, 404);
+  if (!secretKey) return json({ error: "결제 테스트 키가 설정되지 않았습니다." }, 503);
   if (order.status === "paid") return json({ order: { id: order.id, total: order.total, status: order.status } });
   if (Number(order.total) !== amount) return json({ error: "결제 금액이 주문 금액과 일치하지 않습니다." }, 400);
 
@@ -311,10 +324,30 @@ async function confirmPayment(request, db, userId, secretKey) {
 
 async function readJson(request) {
   const length = Number(request.headers.get("Content-Length") || 0);
-  if (length > 16384) return null;
+  if (!Number.isFinite(length) || length < 0 || length > MAX_JSON_BYTES) return null;
   if (!request.headers.get("Content-Type")?.toLowerCase().includes("application/json")) return null;
+  if (!request.body) return null;
   try {
-    return await request.json();
+    const reader = request.body.getReader();
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_JSON_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch {
     return null;
   }
@@ -322,7 +355,7 @@ async function readJson(request) {
 
 function isSameOrigin(request, url) {
   const origin = request.headers.get("Origin");
-  return !origin || origin === url.origin;
+  return origin === url.origin;
 }
 
 function normalizeEmail(value) {
@@ -333,14 +366,38 @@ function isEmail(value) {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function isValidName(value) {
+  return value.length >= 1 && value.length <= 50 && !/[\u0000-\u001f\u007f]/.test(value);
+}
+
 function toPositiveInteger(value) {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
 function toQuantity(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 99 ? value : null;
+}
+
+function parsePositiveInteger(value) {
+  if (typeof value === "number") return Number.isSafeInteger(value) && value > 0 ? value : null;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) return null;
   const number = Number(value);
-  return Number.isInteger(number) && number >= 1 && number <= 99 ? number : null;
+  return Number.isSafeInteger(number) ? number : null;
+}
+
+function parseRouteId(value) {
+  if (!/^[1-9]\d*$/.test(value)) return null;
+  const number = Number(value);
+  return Number.isSafeInteger(number) ? number : null;
+}
+
+function decodeOrderId(value) {
+  try {
+    const decoded = decodeURIComponent(value);
+    return ORDER_ID_PATTERN.test(decoded) ? decoded : null;
+  } catch {
+    return null;
+  }
 }
 
 function publicUser(user) {

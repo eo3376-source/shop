@@ -25,8 +25,14 @@ export async function api(path, options = {}) {
 }
 
 export function safeNext(value, fallback = "/") {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return fallback;
-  return value;
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;
+  try {
+    const destination = new URL(value, location.origin);
+    if (destination.origin !== location.origin) return fallback;
+    return `${destination.pathname}${destination.search}${destination.hash}`;
+  } catch {
+    return fallback;
+  }
 }
 
 export function requireLogin(error) {
