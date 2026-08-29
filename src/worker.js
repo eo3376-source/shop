@@ -43,7 +43,7 @@ async function handleApi(request, env, url) {
   }
   const englishMatch = path.match(/^\/api\/products\/(\d+)\/english$/);
   if (method === "POST" && englishMatch) {
-    return generateEnglishDescription(env.DB, env.AI, Number(englishMatch[1]));
+    return generateEnglishDescription(env.DB, env.GEMINI_API_KEY, Number(englishMatch[1]));
   }
   if (method === "POST" && path === "/api/auth/signup") return signup(request, env.DB);
   if (method === "POST" && path === "/api/auth/login") return login(request, env.DB, url);
@@ -87,29 +87,30 @@ async function getProduct(db, id) {
   return product ? json({ product }) : json({ error: "상품을 찾을 수 없습니다." }, 404);
 }
 
-async function generateEnglishDescription(db, ai, id) {
-  if (!ai || typeof ai.run !== "function") return json({ error: "영어 소개 기능을 사용할 수 없습니다." }, 503);
+async function generateEnglishDescription(db, apiKey, id) {
+  if (!apiKey) return json({ error: "영어 소개 기능을 사용할 수 없습니다." }, 503);
   const product = await db.prepare("SELECT name, description FROM products WHERE id = ?").bind(id).first();
   if (!product) return json({ error: "상품을 찾을 수 없습니다." }, 404);
   try {
-    const result = await ai.run("@cf/meta/llama-3.2-3b-instruct", {
-      messages: [
-        { role: "system", content: "Translate the supplied product name and description into exactly one plain English sentence. Preserve only facts explicitly present in the source; do not elaborate, summarize, praise, or infer anything. Do not add origin, ingredients, certifications, guarantees, shipping, reviews, prices, materials, features, use cases, or any other fact. Return only that one sentence." },
-        { role: "user", content: `Product name: ${product.name}\nProduct description: ${product.description}` }
-      ],
-      max_tokens: 80,
-      temperature: 0
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: "Translate the supplied product name and description into exactly one plain English sentence. Preserve only facts explicitly present in the source; do not elaborate, summarize, praise, or infer anything. Do not add origin, ingredients, certifications, guarantees, shipping, reviews, prices, materials, features, use cases, or any other fact. Return only that one sentence." }] },
+        contents: [{ role: "user", parts: [{ text: `Product name: ${product.name}\nProduct description: ${product.description}` }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 80 }
+      })
     });
-    const raw = typeof result?.response === "string" ? result.response : "";
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("Gemini generation failed", response.status, result?.error?.status);
+      return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
+    }
+    const raw = result?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("") || "";
     const cleaned = raw.replace(/\s+/g, " ").replace(/^[\s"'`]+|[\s"'`]+$/g, "").replace(/^(?:[-*•]\s*)/, "");
     const sentences = cleaned.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean).slice(0, 3) || [];
     if (!sentences.length) return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
     const description = sentences.join(" ");
-    const unsupportedMarketing = /\b(perfect|ideal|stylish|compact|everyday|premium|beautiful|elegant|must-have|great for|on-the-go)\b/i;
-    const typeChecks = [["토트백", /tote\s*bag/i], ["지갑", /wallet/i], ["향수", /perfume|fragrance/i], ["신발", /shoe|sneaker/i], ["장난감", /toy/i], ["하네스", /harness/i]];
-    if (unsupportedMarketing.test(description) || typeChecks.some(([source, pattern]) => String(product.name + product.description).includes(source) && !pattern.test(description))) {
-      return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
-    }
     return json({ description });
   } catch (cause) {
     console.error("Workers AI generation failed", cause);

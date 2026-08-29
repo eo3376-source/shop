@@ -13,8 +13,5 @@
       "database_name": "korean-shop-demo-db",
       "database_id": "68b8bf28-4709-4b34-bb9d-f876bf3c3025"
     }
-  ],
-  "ai": {
-    "binding": "AI"
-  }
+  ]
 }
