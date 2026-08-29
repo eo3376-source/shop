@@ -73,6 +73,11 @@
 .order-item { border-bottom-color: var(--line); }
 .order-total { font-size: 22px; }
 
+.checkout-card { max-width: 640px; margin-top: 40px; padding: 28px; }
+.payment-methods, .payment-agreement { min-height: 80px; }
+.payment-agreement { margin-top: 8px; }
+.checkout-total { display: flex; justify-content: space-between; margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--line); color: var(--strong); font-size: 22px; font-weight: 700; }
+
 * {
   box-sizing: border-box;
 }

@@ -80,7 +80,7 @@ orderButton.addEventListener("click", async () => {
   orderButton.disabled = true;
   try {
     const { order } = await api("/api/orders", { method: "POST", body: "{}" });
-    location.href = `/order-complete.html?id=${encodeURIComponent(order.id)}`;
+    location.href = `/checkout.html?id=${encodeURIComponent(order.id)}`;
   } catch (error) {
     setMessage(messageTarget, error.message);
     await loadCart();

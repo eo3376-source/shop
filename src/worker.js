@@ -17,7 +17,7 @@ export default {
 
       const response = await env.ASSETS.fetch(request);
       const headers = new Headers(response.headers);
-      headers.set("Content-Security-Policy", "default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+      headers.set("Content-Security-Policy", "default-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' https://js.tosspayments.com; connect-src 'self' https://api.tosspayments.com; frame-src https://*.tosspayments.com; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
       headers.set("Referrer-Policy", "same-origin");
       headers.set("X-Content-Type-Options", "nosniff");
       headers.set("X-Frame-Options", "DENY");
@@ -58,6 +58,7 @@ async function handleApi(request, env, url) {
     return deleteCartItem(env.DB, user.id, Number(path.split("/").pop()));
   }
   if (method === "POST" && path === "/api/orders") return createOrder(env.DB, user.id);
+  if (method === "POST" && path === "/api/payments/confirm") return confirmPayment(request, env.DB, user.id, env.TOSS_SECRET_KEY);
   if (method === "GET" && path === "/api/orders") return listOrders(env.DB, user.id);
   if (method === "GET" && path.startsWith("/api/orders/")) {
     return getOrder(env.DB, user.id, decodeURIComponent(path.slice("/api/orders/".length)));
@@ -236,6 +237,41 @@ async function getOrder(db, userId, orderId) {
     WHERE order_items.order_id = ? ORDER BY order_items.id
   `).bind(orderId).all();
   return json({ order: { ...order, items } });
+}
+
+async function confirmPayment(request, db, userId, secretKey) {
+  if (!secretKey) return json({ error: "결제 테스트 키가 설정되지 않았습니다." }, 503);
+  const body = await readJson(request);
+  const paymentKey = typeof body?.paymentKey === "string" ? body.paymentKey.trim() : "";
+  const orderId = typeof body?.orderId === "string" ? body.orderId.trim() : "";
+  const amount = Number(body?.amount);
+  if (!paymentKey || paymentKey.length > 200 || !orderId || orderId.length > 64 || !Number.isSafeInteger(amount) || amount <= 0) {
+    return json({ error: "결제 승인 정보가 올바르지 않습니다." }, 400);
+  }
+
+  const order = await db.prepare("SELECT id, total, status FROM orders WHERE id = ? AND user_id = ?")
+    .bind(orderId, userId).first();
+  if (!order) return json({ error: "주문을 찾을 수 없습니다." }, 404);
+  if (order.status === "paid") return json({ order: { id: order.id, total: order.total, status: order.status } });
+  if (Number(order.total) !== amount) return json({ error: "결제 금액이 주문 금액과 일치하지 않습니다." }, 400);
+
+  const auth = btoa(`${secretKey}:`);
+  const tossResponse = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ paymentKey, orderId, amount })
+  });
+  const tossData = await tossResponse.json().catch(() => ({}));
+  if (!tossResponse.ok) {
+    console.error("Toss payment confirmation failed", tossResponse.status, tossData.code);
+    return json({ error: tossData.message || "결제 승인에 실패했습니다." }, 502);
+  }
+  if (tossData.orderId !== orderId || Number(tossData.totalAmount) !== amount) {
+    return json({ error: "토스 결제 승인 응답을 검증하지 못했습니다." }, 502);
+  }
+  await db.prepare("UPDATE orders SET status = 'paid', payment_key = ?, paid_at = datetime('now') WHERE id = ? AND user_id = ? AND status = 'pending'")
+    .bind(paymentKey, orderId, userId).run();
+  return json({ order: { id: order.id, total: order.total, status: "paid" } });
 }
 
 async function readJson(request) {
