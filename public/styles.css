@@ -73,6 +73,59 @@
 .order-item { border-bottom-color: var(--line); }
 .order-total { font-size: 22px; }
 
+.small-animal-intro {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 48px;
+  align-items: end;
+  margin-bottom: 72px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--line);
+}
+.small-animal-copy { padding-bottom: 8px; }
+.intro-kicker {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: .02em;
+}
+.intro-title {
+  max-width: 360px;
+  margin: 0;
+  color: var(--strong);
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.2;
+}
+.intro-description {
+  max-width: 280px;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.intro-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.intro-gallery figure { min-width: 0; margin: 0; }
+.intro-gallery img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 2px;
+  background: var(--surface);
+}
+.intro-gallery figcaption {
+  margin-top: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 400;
+}
+
 * {
   box-sizing: border-box;
 }
