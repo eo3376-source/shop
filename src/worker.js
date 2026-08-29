@@ -41,6 +41,10 @@ async function handleApi(request, env, url) {
   if (method === "GET" && /^\/api\/products\/\d+$/.test(path)) {
     return getProduct(env.DB, Number(path.split("/").pop()));
   }
+  const englishMatch = path.match(/^\/api\/products\/(\d+)\/english$/);
+  if (method === "POST" && englishMatch) {
+    return generateEnglishDescription(env.DB, env.AI, Number(englishMatch[1]));
+  }
   if (method === "POST" && path === "/api/auth/signup") return signup(request, env.DB);
   if (method === "POST" && path === "/api/auth/login") return login(request, env.DB, url);
   if (method === "POST" && path === "/api/auth/logout") return logout(request, env.DB, url);
@@ -81,6 +85,36 @@ async function listProducts(db, url) {
 async function getProduct(db, id) {
   const product = await db.prepare("SELECT id, name, price, description, category, image_url FROM products WHERE id = ?").bind(id).first();
   return product ? json({ product }) : json({ error: "상품을 찾을 수 없습니다." }, 404);
+}
+
+async function generateEnglishDescription(db, ai, id) {
+  if (!ai || typeof ai.run !== "function") return json({ error: "영어 소개 기능을 사용할 수 없습니다." }, 503);
+  const product = await db.prepare("SELECT name, description FROM products WHERE id = ?").bind(id).first();
+  if (!product) return json({ error: "상품을 찾을 수 없습니다." }, 404);
+  try {
+    const result = await ai.run("@cf/meta/llama-3.2-3b-instruct", {
+      messages: [
+        { role: "system", content: "Translate the supplied product name and description into exactly one plain English sentence. Preserve only facts explicitly present in the source; do not elaborate, summarize, praise, or infer anything. Do not add origin, ingredients, certifications, guarantees, shipping, reviews, prices, materials, features, use cases, or any other fact. Return only that one sentence." },
+        { role: "user", content: `Product name: ${product.name}\nProduct description: ${product.description}` }
+      ],
+      max_tokens: 80,
+      temperature: 0
+    });
+    const raw = typeof result?.response === "string" ? result.response : "";
+    const cleaned = raw.replace(/\s+/g, " ").replace(/^[\s"'`]+|[\s"'`]+$/g, "").replace(/^(?:[-*•]\s*)/, "");
+    const sentences = cleaned.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((sentence) => sentence.trim()).filter(Boolean).slice(0, 3) || [];
+    if (!sentences.length) return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
+    const description = sentences.join(" ");
+    const unsupportedMarketing = /\b(perfect|ideal|stylish|compact|everyday|premium|beautiful|elegant|must-have|great for|on-the-go)\b/i;
+    const typeChecks = [["토트백", /tote\s*bag/i], ["지갑", /wallet/i], ["향수", /perfume|fragrance/i], ["신발", /shoe|sneaker/i], ["장난감", /toy/i], ["하네스", /harness/i]];
+    if (unsupportedMarketing.test(description) || typeChecks.some(([source, pattern]) => String(product.name + product.description).includes(source) && !pattern.test(description))) {
+      return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
+    }
+    return json({ description });
+  } catch (cause) {
+    console.error("Workers AI generation failed", cause);
+    return json({ error: "영어 소개를 만들지 못했습니다." }, 502);
+  }
 }
 
 async function signup(request, db) {

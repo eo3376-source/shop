@@ -654,3 +654,44 @@ img {
   font-size: 24px;
   font-weight: 700;
 }
+
+.english-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 0 20px;
+  border: 1px solid var(--active);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--active);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.english-action:disabled {
+  background: var(--disabled-bg);
+  color: var(--disabled-text);
+  cursor: wait;
+}
+
+.english-panel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.english-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.english-description {
+  margin: 8px 0 0;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+}

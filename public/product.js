@@ -18,6 +18,11 @@ if (!Number.isInteger(id) || id < 1) {
           <div class="detail-category">${escapeHtml(product.category)}</div>
           <h1 class="detail-name">${escapeHtml(product.name)}</h1>
           <p class="detail-description">${escapeHtml(product.description)}</p>
+          <button class="english-action" type="button" data-english>English</button>
+          <div class="english-panel" data-english-panel hidden>
+            <p class="english-label">English description</p>
+            <p class="english-description" data-english-text aria-live="polite"></p>
+          </div>
           <p class="product-price detail-price">${currency(product.price).replace("원", '<span class="price-unit">원</span>')}</p>
           <div class="purchase-row">
             <div class="quantity-control" aria-label="수량 선택">
@@ -32,6 +37,27 @@ if (!Number.isInteger(id) || id < 1) {
       </div>`);
 
     const quantity = target.querySelector("[data-qty]");
+    const englishButton = target.querySelector("[data-english]");
+    const englishPanel = target.querySelector("[data-english-panel]");
+    const englishText = target.querySelector("[data-english-text]");
+    englishButton.addEventListener("click", async () => {
+      const wasHidden = englishPanel.hidden;
+      const previousText = englishText.textContent;
+      englishPanel.hidden = false;
+      englishText.textContent = "불러오는 중...";
+      englishButton.disabled = true;
+      try {
+        const result = await api(`/api/products/${product.id}/english`, { method: "POST", body: "{}" });
+        if (!result.description) throw new Error("영어 소개를 만들지 못했습니다.");
+        englishText.textContent = result.description;
+      } catch (error) {
+        englishPanel.hidden = wasHidden;
+        englishText.textContent = previousText;
+        console.error(error);
+      } finally {
+        englishButton.disabled = false;
+      }
+    });
     target.querySelector("[data-decrease]").addEventListener("click", () => setQuantity(Number(quantity.value) - 1));
     target.querySelector("[data-increase]").addEventListener("click", () => setQuantity(Number(quantity.value) + 1));
     quantity.addEventListener("change", () => setQuantity(Number(quantity.value)));
