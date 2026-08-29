@@ -10,7 +10,13 @@
   <div data-header></div>
   <main class="page">
     <section class="shell catalog-shell" aria-labelledby="catalog-title">
-      <h1 class="catalog-title" id="catalog-title">상품</h1>
+      <div class="catalog-heading">
+        <div>
+          <p class="catalog-kicker">COLLECTION</p>
+          <h1 class="catalog-title" id="catalog-title">상품</h1>
+        </div>
+        <span class="catalog-count" data-product-count aria-live="polite"></span>
+      </div>
       <div class="category-filter" role="tablist" aria-label="상품 분류" data-categories></div>
       <div class="product-grid" data-products aria-live="polite"></div>
       <p class="message" data-message hidden></p>

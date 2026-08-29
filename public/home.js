@@ -4,6 +4,7 @@ const categories = ["전체", "잡화", "뷰티", "신발", "식품"];
 const categoryTarget = document.querySelector("[data-categories]");
 const productTarget = document.querySelector("[data-products]");
 const messageTarget = document.querySelector("[data-message]");
+const countTarget = document.querySelector("[data-product-count]");
 let selected = new URLSearchParams(location.search).get("category") || "전체";
 if (!categories.includes(selected)) selected = "전체";
 
@@ -30,6 +31,7 @@ async function loadProducts() {
   try {
     const query = selected === "전체" ? "" : `?category=${encodeURIComponent(selected)}`;
     const { products } = await api(`/api/products${query}`);
+    countTarget.textContent = `${products.length}개의 상품`;
     productTarget.innerHTML = products.map((product) => `
       <article class="product-card">
         <a href="/product.html?id=${product.id}">
