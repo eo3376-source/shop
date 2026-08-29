@@ -1,20 +1,77 @@
 :root {
   --surface: #FFFFFF;
-  --outer: #F0F0F0;
-  --tool: #FAFAFA;
-  --disabled-bg: #F2F4F6;
-  --line: #E0E3E7;
-  --text: #232B35;
-  --strong: #131516;
-  --muted: #8A8A8A;
-  --disabled-text: #ACB5BF;
-  --active: #4269F6;
-  --price: #BA2D1B;
-  font-family: Arial, "맑은 고딕", sans-serif;
+  --outer: #F7F6F3;
+  --tool: #F7F6F3;
+  --disabled-bg: #EFEDE7;
+  --line: #DEDBD3;
+  --text: #54524C;
+  --strong: #1C1C1A;
+  --muted: #8C8A82;
+  --disabled-text: #8C8A82;
+  --active: #B23A2E;
+  --price: #1C1C1A;
+  font-family: Pretendard, -apple-system, "Apple SD Gothic Neo", sans-serif;
   color: var(--text);
   background: var(--outer);
   font-synthesis: none;
 }
+
+/* DESIGN2: 넉넉한 여백, 면 색 차이, 각진 편집숍 마감 */
+.site-header { background: var(--outer); border-bottom: 1px solid var(--line); }
+.header-home, .header-nav a, .header-nav button, .header-user { font-weight: 500; letter-spacing: .02em; }
+.header-home { font-size: 15px; }
+.page { padding: 64px 0 88px; background: var(--outer); }
+.shell { width: calc(100% - 160px); max-width: 1280px; }
+.catalog-shell { width: auto; max-width: none; }
+.catalog-title { font-size: 22px; font-weight: 600; letter-spacing: -.01em; }
+.page-title { font-size: 36px; letter-spacing: -.02em; }
+.category-filter { margin-top: 24px; border-bottom-color: var(--line); }
+.category-filter button { min-width: 72px; padding: 0 12px; font-size: 13px; }
+.category-filter button[aria-selected="true"] { color: var(--active); font-weight: 600; }
+.category-filter button[aria-selected="true"]::after { height: 2px; background: var(--active); }
+.product-grid { gap: 48px 24px; margin-top: 40px; }
+.product-card-image { border-radius: 2px; }
+.product-card-name { margin-top: 16px; font-size: 15px; }
+.product-price { margin-top: 6px; color: var(--price); font-size: 22px; font-weight: 700; }
+.detail-layout { grid-template-columns: minmax(0, 11fr) minmax(0, 9fr); gap: 64px; }
+.detail-image-wrap { width: auto; border-radius: 2px; }
+.detail-info { padding-top: 28px; }
+.detail-name { font-size: 22px; font-weight: 600; }
+.detail-description { font-size: 15px; }
+.detail-price { margin-top: 24px; padding-bottom: 24px; }
+.purchase-row { gap: 16px; margin-top: 32px; }
+.quantity-control { border-radius: 2px; }
+.primary-action { height: 52px; border: 0; border-radius: 2px; background: var(--strong); color: var(--surface); font-size: 15px; font-weight: 600; }
+.primary-action:disabled { border: 0; border-radius: 2px; background: var(--disabled-bg); color: var(--disabled-text); }
+.cart-layout { grid-template-columns: minmax(0, 787px) minmax(300px, 375px); gap: 40px; margin-top: 48px; }
+.card { border: 0; border-radius: 2px; background: var(--surface); }
+.cart-item { min-height: 250px; padding: 28px 0; border-bottom-color: var(--line); }
+.cart-name { font-size: 15px; }
+.cart-description { font-size: 13px; }
+.cart-price { font-size: 22px; }
+.summary-card { padding: 28px; }
+.summary-title { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.summary-row { margin-top: 24px; font-size: 15px; }
+.summary-total { font-size: 22px; border-top-color: var(--line); }
+.empty-card { padding: 40px 0; font-size: 15px; }
+.auth-shell { width: 420px; }
+.auth-card { margin-top: 48px; padding: 28px; }
+.form-group + .form-group { margin-top: 24px; }
+.form-label { margin-bottom: 8px; font-size: 13px; }
+.text-input { height: 48px; border-color: var(--line); border-radius: 2px; font-size: 15px; }
+.auth-card .primary-action { margin-top: 28px; }
+.auth-switch { margin-top: 24px; font-size: 13px; }
+.auth-switch a { color: var(--text); text-decoration: underline; }
+.profile-card, .order-card { margin-top: 48px; padding: 28px; }
+.profile-name { font-size: 18px; font-weight: 600; }
+.profile-email { font-size: 13px; }
+.section-heading { margin-top: 48px; font-size: 22px; font-weight: 600; }
+.order-list { margin-top: 24px; border-top-color: var(--line); }
+.order-link { font-size: 15px; }
+.status-text { color: var(--text); font-size: 13px; }
+.order-number { font-size: 15px; }
+.order-item { border-bottom-color: var(--line); }
+.order-total { font-size: 22px; }
 
 * {
   box-sizing: border-box;
